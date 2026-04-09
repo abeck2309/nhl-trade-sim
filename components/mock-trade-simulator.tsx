@@ -425,6 +425,7 @@ export function MockTradeSimulator({ teams }: { teams: MockTeam[] }) {
   const [calledUpAhlIds, setCalledUpAhlIds] = useState<string[]>([]);
   const [selectedCallupId, setSelectedCallupId] = useState("");
   const [selectedCalldownId, setSelectedCalldownId] = useState("");
+  const [sandboxMode, setSandboxMode] = useState(false);
   const tradeSummaryRef = useRef<HTMLDivElement | null>(null);
 
   const opponentBase = teams.find((team) => team.id === selectedOpponentId) ?? opponentPool[0];
@@ -475,7 +476,7 @@ export function MockTradeSimulator({ teams }: { teams: MockTeam[] }) {
   const opponentOverage = Math.max(0, projectedOpponentCap - SALARY_CAP_CEILING);
   const canSubmitTrade =
     Boolean(opponentBase) &&
-    !(isVgkOverCap || isOpponentOverCap) &&
+    (sandboxMode || !(isVgkOverCap || isOpponentOverCap)) &&
     (pendingVgkIds.length > 0 || pendingOpponentIds.length > 0);
 
   const vgkForwards = [...lineupEligibleNhlAssets, ...calledUpAhlPlayers].filter((asset) => asset.type === "Forward");
@@ -679,8 +680,8 @@ export function MockTradeSimulator({ teams }: { teams: MockTeam[] }) {
       ) : null}
 
       <div className="overflow-hidden rounded-[2rem] border border-slate-500/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] shadow-[0_30px_80px_rgba(0,0,0,0.4)]">
-        <div className="border-b border-white/10 bg-[linear-gradient(90deg,rgba(255,255,255,0.09),rgba(148,163,184,0.04))] px-5 py-5 md:px-7">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+        <div className="relative border-b border-white/10 bg-[linear-gradient(90deg,rgba(255,255,255,0.09),rgba(148,163,184,0.04))] px-5 py-5 md:px-7">
+          <div className="flex flex-col gap-5 xl:pr-[32rem]">
             <div className="space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-300">
                 VGK Trade Lab
@@ -719,6 +720,38 @@ export function MockTradeSimulator({ teams }: { teams: MockTeam[] }) {
             >
               VGK Lineup Creation
             </button>
+          </div>
+
+          <div className="mt-5 flex justify-end xl:mt-0 xl:absolute xl:bottom-5 xl:left-[59.18%] xl:right-5">
+            <div className="rounded-[1.4rem] border border-white/10 bg-[#0f1725]/90 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300">
+                Sandbox Mode
+              </p>
+              <p className="mt-2 pr-10 text-sm leading-6 text-slate-400">
+                Turn off clause locks and salary-cap restrictions for free-form testing.
+              </p>
+              <div className="mt-4 flex items-end justify-between gap-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  {sandboxMode ? "Clause and cap restrictions disabled" : "Live rules active"}
+                </p>
+                <button
+                  type="button"
+                  aria-pressed={sandboxMode}
+                  onClick={() => setSandboxMode((current) => !current)}
+                  className={`relative h-8 w-14 shrink-0 rounded-full border transition ${
+                    sandboxMode
+                      ? "border-emerald-300/35 bg-emerald-400/25"
+                      : "border-white/15 bg-white/10"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition ${
+                      sandboxMode ? "left-7" : "left-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -767,6 +800,11 @@ export function MockTradeSimulator({ teams }: { teams: MockTeam[] }) {
                         Applying the deal updates the VGK roster, keeps retained salary on the books, and blocks
                         submission if either club would finish above the ${SALARY_CAP_CEILING.toFixed(1)}M ceiling.
                       </p>
+                      {sandboxMode ? (
+                        <p className="text-xs uppercase tracking-[0.16em] text-emerald-200">
+                          Sandbox mode active: clause and salary-cap restrictions are currently disabled.
+                        </p>
+                      ) : null}
                       <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
                         NHL cap only: VGK ${projectedVgkCap.toFixed(2)}M | {opponentBase?.abbreviation ?? "---"} $
                         {projectedOpponentCap.toFixed(2)}M
@@ -777,7 +815,7 @@ export function MockTradeSimulator({ teams }: { teams: MockTeam[] }) {
                           {opponentBase?.abbreviation ?? "---"} ${totalRetainedCharges(opponentRetainedCharges).toFixed(2)}M
                         </p>
                       )}
-                      {(isVgkOverCap || isOpponentOverCap) && (
+                      {!sandboxMode && (isVgkOverCap || isOpponentOverCap) && (
                         <p className="text-sm font-semibold text-rose-200">
                           Cap violation:{" "}
                           {isVgkOverCap
@@ -808,6 +846,7 @@ export function MockTradeSimulator({ teams }: { teams: MockTeam[] }) {
                   title="VGK Current Roster"
                   assets={currentVgkRoster}
                   selectedIds={pendingVgkIds}
+                  sandboxMode={sandboxMode}
                   onToggleAsset={(assetId) => togglePending("vgk", assetId)}
                 />
                 {opponentBase ? (
@@ -816,6 +855,7 @@ export function MockTradeSimulator({ teams }: { teams: MockTeam[] }) {
                     title={`${opponentBase.shortName} Current Roster`}
                     assets={currentOpponentRoster}
                     selectedIds={pendingOpponentIds}
+                    sandboxMode={sandboxMode}
                     onToggleAsset={(assetId) => togglePending("opponent", assetId)}
                     bordered
                   />
@@ -1234,6 +1274,7 @@ function RosterModule({
   title,
   assets,
   selectedIds,
+  sandboxMode,
   onToggleAsset,
   bordered = false
 }: {
@@ -1241,6 +1282,7 @@ function RosterModule({
   title: string;
   assets: MockAsset[];
   selectedIds: string[];
+  sandboxMode: boolean;
   onToggleAsset: (assetId: string) => void;
   bordered?: boolean;
 }) {
@@ -1259,7 +1301,10 @@ function RosterModule({
         <div className="border-b border-white/10 px-4 py-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: team.palette.primary }} />
+              <div
+                className="h-3 w-3 rounded-full"
+                style={{ backgroundColor: getTeamMarkerColors(team).primary }}
+              />
               <p className="font-[family-name:var(--font-heading)] text-xl font-semibold text-white">{title}</p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -1306,10 +1351,10 @@ function RosterModule({
           ) : (
             tabAssets.map((asset, index) => {
               const isSelected = selectedIds.includes(asset.id);
-              const isBlocked = Boolean(asset.isTradeBlocked);
-              const isWarningOnly = asset.clauseType === "M-NTC" && !isBlocked;
-              const isNtcBlocked = asset.clauseType === "NTC" && isBlocked;
-              const isNmcBlocked = asset.clauseType === "NMC" && isBlocked;
+              const isBlocked = Boolean(asset.isTradeBlocked) && !sandboxMode;
+              const isWarningOnly = asset.clauseType === "M-NTC" && !isBlocked && !sandboxMode;
+              const isNtcBlocked = asset.clauseType === "NTC" && isBlocked && !sandboxMode;
+              const isNmcBlocked = asset.clauseType === "NMC" && isBlocked && !sandboxMode;
 
               if (activeTab === "pick") {
                 return (
@@ -1368,7 +1413,9 @@ function RosterModule({
                       {asset.clauseType ? (
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                            asset.clauseType === "M-NTC"
+                            sandboxMode
+                              ? "border border-white/15 bg-white/[0.04] text-slate-200"
+                              : asset.clauseType === "M-NTC"
                               ? "border border-amber-300/30 bg-amber-300/12 text-amber-100"
                               : asset.clauseType === "NTC"
                                 ? "border border-orange-400/45 bg-orange-500/20 text-orange-50"
@@ -1381,6 +1428,8 @@ function RosterModule({
                     </div>
                     <p className="mt-1 text-[11px] text-slate-500">
                       {isBlocked
+                        ? `${asset.role} • Trade blocked by ${asset.clauseType}`
+                        : isBlocked
                         ? `${asset.role} • Trade blocked by ${asset.clauseType}`
                         : isWarningOnly
                           ? `${asset.role} • Modified no-trade clause warning`
