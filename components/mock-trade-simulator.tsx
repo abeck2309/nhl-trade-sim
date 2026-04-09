@@ -1438,14 +1438,14 @@ function LineupRow({
       >
         {slots.map((slot) => {
           const availablePlayers = getAvailablePlayersForSlot(slot, lineupSelections, lineupValidPlayers);
-          const isOptionalOpen = slot === "Scratch G";
+          const isOptionalOpen = slot === "Scratch 3" || slot === "Scratch G";
           const isOpen = !lineupSelections[slot];
           const showOpenWarning = isOpen && !isOptionalOpen;
 
           return (
             <label
               key={slot}
-              className={`rounded-2xl p-4 ${
+              className={`rounded-2xl p-3 md:p-4 ${
                 showOpenWarning
                   ? "border border-rose-300/45 bg-rose-400/10"
                   : "border border-white/10 bg-[#162132]"
@@ -1494,7 +1494,7 @@ function InjuredReserveRow({ assets }: { assets: MockAsset[] }) {
         {slots.map((asset, index) => (
           <div
             key={`ir-${index}`}
-            className="rounded-2xl border border-white/10 bg-[#162132] p-4"
+            className="rounded-2xl border border-white/10 bg-[#162132] p-3 md:p-4"
           >
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
               IR {index + 1}

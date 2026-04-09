@@ -286,6 +286,18 @@ function applyKnownStatusOverride(team: MockTeam, name: string, status?: string)
   return status?.trim();
 }
 
+function applyKnownBucketOverride(
+  team: MockTeam,
+  name: string,
+  bucket: Extract<MockAsset["bucket"], "nhl" | "ahl" | "prospect">
+) {
+  if (team.abbreviation === "VGK" && normalizeAssetName(name) === normalizeAssetName("Jonas Rondbjerg")) {
+    return "ahl" as const;
+  }
+
+  return bucket;
+}
+
 function statusCountsAgainstCap(status?: string) {
   const normalized = status?.trim().toUpperCase() ?? "";
 
@@ -308,41 +320,46 @@ function buildPlayerAsset(
   sectionCapOverrides?: Map<string, SectionCapOverride>,
   metrics?: Awaited<ReturnType<typeof getPlayerMetricData>>
 ) {
+  const name = formatCapWagesName(player.name);
+  const resolvedBucket = applyKnownBucketOverride(team, name, bucket);
   const kind = parseCapWagesKind(player.pos);
   const position = parseCapWagesPosition(player.pos);
-  const name = formatCapWagesName(player.name);
   const contract = getCurrentContract(player);
   const clause = extractClause(player);
-  const isProspect = bucket === "prospect";
+  const isProspect = resolvedBucket === "prospect";
   const retainedCapOverride = isProspect ? null : getRetainedCapHitForTeam(team, contract.detail);
   const sectionCapOverride = sectionCapOverrides?.get(normalizeAssetName(name));
   const rawCapHit = isProspect ? 0 : sectionCapOverride?.capHit ?? retainedCapOverride ?? contract.capHit ?? 0;
   const capHit = applyKnownCapOverride(team, name, rawCapHit);
   const status = applyKnownStatusOverride(team, name, player.status);
-  const countsAgainstCap = bucket === "nhl" ? statusCountsAgainstCap(status) : true;
+  const countsAgainstCap = resolvedBucket === "nhl" ? statusCountsAgainstCap(status) : true;
   const metricKey = getMetricKey(name, team.abbreviation);
   const importedWar = metrics?.warByPlayerTeam.get(metricKey) ?? null;
   const importedScore = metrics?.scoreByPlayerTeam.get(metricKey);
   const fallbackWar =
     kind === "Goalie"
-      ? Number(Math.max(0.1, (bucket === "nhl" ? 1.4 : 0.5) - index * (bucket === "nhl" ? 0.08 : 0.03)).toFixed(1))
-      : Number(Math.max(0.1, (bucket === "nhl" ? 2 : 0.7) - index * (bucket === "nhl" ? 0.07 : 0.03)).toFixed(1));
+      ? Number(
+          Math.max(0.1, (resolvedBucket === "nhl" ? 1.4 : 0.5) - index * (resolvedBucket === "nhl" ? 0.08 : 0.03)).toFixed(1)
+        )
+      : Number(
+          Math.max(0.1, (resolvedBucket === "nhl" ? 2 : 0.7) - index * (resolvedBucket === "nhl" ? 0.07 : 0.03)).toFixed(1)
+        );
   const currentWar = importedWar;
   const futureWar =
-    bucket === "prospect"
+    resolvedBucket === "prospect"
       ? Number(Math.max(0.3, 1.4 - index * 0.05).toFixed(1))
-      : Number((((currentWar ?? fallbackWar) + (bucket === "ahl" ? 0.2 : 0.3))).toFixed(1));
+      : Number((((currentWar ?? fallbackWar) + (resolvedBucket === "ahl" ? 0.2 : 0.3))).toFixed(1));
 
   return {
-    id: `${team.id}-${bucket}-${normalizeAssetName(name)}`,
+    id: `${team.id}-${resolvedBucket}-${normalizeAssetName(name)}`,
     teamId: team.id,
-    bucket,
+    bucket: resolvedBucket,
     name,
     type: kind,
     role:
-      bucket === "nhl"
+      resolvedBucket === "nhl"
         ? status || `NHL ${kind.toLowerCase()}`
-        : inferRole(bucket, player, kind),
+        : inferRole(resolvedBucket, player, kind),
     position,
     age: ageFromBirthDate(player.born),
     contractLabel:
@@ -359,17 +376,17 @@ function buildPlayerAsset(
     valueScore:
       typeof importedScore === "number"
         ? importedScore
-        : bucket === "prospect"
+        : resolvedBucket === "prospect"
         ? Math.max(16, 42 - index)
-        : bucket === "ahl"
+        : resolvedBucket === "ahl"
           ? Math.max(12, Math.round(14 + futureWar * 10 - index))
           : Math.max(14, Math.round((capHit || 0.8) * 5 + (currentWar ?? 0) * 10 - index / 2)),
-    risk: bucket === "prospect" ? 42 : bucket === "ahl" ? 28 : 18,
+    risk: resolvedBucket === "prospect" ? 42 : resolvedBucket === "ahl" ? 28 : 18,
     shootingHand: "L",
     summary:
-      bucket === "nhl"
+      resolvedBucket === "nhl"
         ? `${team.shortName} currently list this player on their NHL roster in CapWages.`
-        : bucket === "ahl"
+        : resolvedBucket === "ahl"
           ? `${team.shortName} currently list this player in their non-roster or AHL group on CapWages.`
           : `${team.shortName} currently hold the rights to this prospect on CapWages.`,
     clauseType: clause.clauseType,

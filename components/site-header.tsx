@@ -37,16 +37,25 @@ export function SiteHeader() {
         <nav aria-label="Primary" className="flex flex-wrap gap-2">
           {siteConfig.navigation.map((item) => {
             const isActive = item.href === "/" ? pathname === "/" : false;
+            const navClass = cn(
+              "rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-mist hover:border-white/15 hover:text-white",
+              isActive && "border-white/20 bg-white/[0.08] text-white"
+            );
+
+            if (item.href.startsWith("#")) {
+              return (
+                <a key={item.href} href={item.href} className={navClass}>
+                  {item.label}
+                </a>
+              );
+            }
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-mist hover:border-white/15 hover:text-white",
-                  isActive && "border-white/20 bg-white/[0.08] text-white"
-                )}
+                className={navClass}
               >
                 {item.label}
               </Link>

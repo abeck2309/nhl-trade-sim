@@ -120,6 +120,42 @@ export default async function HomePage() {
             movement, and written summaries are analytical layers inside the simulator rather than official team valuations.
           </p>
         </div>
+
+        <div className="panel p-6 md:col-span-2 md:p-8">
+          <p className="eyebrow">How To Read It</p>
+          <h2 className="mt-3 font-[family-name:var(--font-heading)] text-2xl font-semibold text-white">
+            A quick guide to the model behind the screen.
+          </h2>
+          <div className="mt-4 grid gap-6 md:grid-cols-3">
+            <div>
+              <h3 className="font-[family-name:var(--font-heading)] text-lg font-semibold text-white">
+                Contract clauses
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-mist md:text-base">
+                Full no-trade and no-move clauses are treated as hard stops in the simulator. Modified no-trade
+                clauses stay available, but they are flagged as a warning because the exact team list is not public.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-[family-name:var(--font-heading)] text-lg font-semibold text-white">WAR</h3>
+              <p className="mt-2 text-sm leading-7 text-mist md:text-base">
+                WAR stands for Wins Above Replacement. In this tool, it helps estimate how much present on-ice value
+                a player adds compared with a readily available replacement-level option. If no WAR value is available
+                in the source file, that field is left blank rather than guessed.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-[family-name:var(--font-heading)] text-lg font-semibold text-white">
+                Trade value
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-mist md:text-base">
+                The value model blends player score inputs, WAR context, age, contract structure, retained salary,
+                and draft-pick discounts by round and year. The outcome is meant to suggest whether Vegas is gaining
+                present value, future value, flexibility, or some combination of the three in a given move.
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
     </Container>
   );
