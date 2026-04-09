@@ -1,4 +1,5 @@
 import { readFile } from "fs/promises";
+import path from "path";
 
 type MetricRow = Record<string, string>;
 
@@ -7,8 +8,8 @@ type PlayerMetricData = {
   scoreByPlayerTeam: Map<string, number>;
 };
 
-const WAR_PATH = "C:/Users/Andrew/OneDrive - Stan State/Downloads/WAR.csv";
-const SCORE_PATH = "C:/Users/Andrew/OneDrive - Stan State/Downloads/final_trade_values_with_goalies.csv";
+const WAR_PATH = path.join(process.cwd(), "data", "WAR.csv");
+const SCORE_PATH = path.join(process.cwd(), "data", "final_trade_values_with_goalies.csv");
 
 function normalizeName(value: string) {
   return value
