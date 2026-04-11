@@ -399,6 +399,79 @@ function SummaryPill({
   );
 }
 
+function drawRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+const LINEUP_EXPORT_FONT = '"Segoe UI", Arial, sans-serif';
+
+function drawLineupSlotCard(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  label: string,
+  playerName: string,
+  isOpen = false
+) {
+  drawRoundedRect(ctx, x, y, width, height, 22);
+  ctx.fillStyle = isOpen ? "rgba(127, 29, 29, 0.18)" : "#162132";
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = isOpen ? "rgba(252, 165, 165, 0.5)" : "rgba(255,255,255,0.12)";
+  ctx.stroke();
+
+  ctx.fillStyle = isOpen ? "#fecaca" : "#94a3b8";
+  ctx.font = `700 18px ${LINEUP_EXPORT_FONT}`;
+  ctx.fillText(label.toUpperCase(), x + 28, y + 38);
+
+  ctx.fillStyle = "#f8fafc";
+  ctx.font = `700 28px ${LINEUP_EXPORT_FONT}`;
+
+  const maxWidth = width - 56;
+  const words = playerName.split(" ");
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    const candidate = currentLine ? `${currentLine} ${word}` : word;
+
+    if (!currentLine || ctx.measureText(candidate).width <= maxWidth) {
+      currentLine = candidate;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  const limitedLines = lines.slice(0, 2);
+  limitedLines.forEach((line, index) => {
+    ctx.fillText(line, x + 28, y + 68 + index * 24);
+  });
+}
+
 export function MockTradeSimulator({ teams }: { teams: MockTeam[] }) {
   const vgkBase = teams.find((team) => team.id === vgkTeamId) ?? teams[0];
   const opponentPool = teams.filter((team) => team.id !== vgkTeamId);
@@ -667,6 +740,140 @@ export function MockTradeSimulator({ teams }: { teams: MockTeam[] }) {
       ...current,
       [slot]: assetId || undefined
     }));
+  }
+
+  function exportLineupImage() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1800;
+    canvas.height = 1540;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      return;
+    }
+
+    const playerNameById = new Map(currentVgkRoster.map((asset) => [asset.id, asset.name]));
+    const slotName = (slot: LineupSlot) => playerNameById.get(lineupSelections[slot] ?? "") ?? "Open";
+    const teamColors = getTeamMarkerColors(vgkBase);
+
+    const lines = [
+      { title: "L1", slots: ["L1 LW", "L1 C", "L1 RW"] as LineupSlot[] },
+      { title: "L2", slots: ["L2 LW", "L2 C", "L2 RW"] as LineupSlot[] },
+      { title: "L3", slots: ["L3 LW", "L3 C", "L3 RW"] as LineupSlot[] },
+      { title: "L4", slots: ["L4 LW", "L4 C", "L4 RW"] as LineupSlot[] }
+    ];
+    const pairs = [
+      { title: "P1", slots: ["P1 LD", "P1 RD"] as LineupSlot[] },
+      { title: "P2", slots: ["P2 LD", "P2 RD"] as LineupSlot[] },
+      { title: "P3", slots: ["P3 LD", "P3 RD"] as LineupSlot[] }
+    ];
+    const scratches = ["Scratch 1", "Scratch 2", "Scratch 3", "Scratch G"] as LineupSlot[];
+
+    const gradient = ctx.createLinearGradient(0, 0, 1800, 1540);
+    gradient.addColorStop(0, "#0b1220");
+    gradient.addColorStop(1, "#111b2c");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    drawRoundedRect(ctx, 40, 40, 1720, 1460, 40);
+    ctx.fillStyle = "rgba(15, 23, 37, 0.92)";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.stroke();
+
+    ctx.fillStyle = teamColors.primary;
+    ctx.font = `700 24px ${LINEUP_EXPORT_FONT}`;
+    ctx.fillText("VGK TRADE LAB", 96, 112);
+
+    const forwardCardWidth = 490;
+    const pairCardWidth = 560;
+    const goalieCardWidth = 560;
+    const scratchCardWidth = 395;
+    const cardHeight = 106;
+    let y = 140;
+    for (const line of lines) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = `700 20px ${LINEUP_EXPORT_FONT}`;
+      ctx.fillText(line.title, 62, y + 62);
+
+      line.slots.forEach((slot, index) => {
+        drawLineupSlotCard(
+          ctx,
+          96 + index * 530,
+          y,
+          forwardCardWidth,
+          cardHeight,
+          slot,
+          slotName(slot),
+          !lineupSelections[slot]
+        );
+      });
+
+      y += 124;
+    }
+
+    let pairY = y + 22;
+    for (const pair of pairs) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = `700 20px ${LINEUP_EXPORT_FONT}`;
+      ctx.fillText(pair.title, 214, pairY + 62);
+
+      pair.slots.forEach((slot, index) => {
+        drawLineupSlotCard(
+          ctx,
+          260 + index * 620,
+          pairY,
+          pairCardWidth,
+          cardHeight,
+          slot,
+          slotName(slot),
+          !lineupSelections[slot]
+        );
+      });
+
+      pairY += 124;
+    }
+
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = `700 20px ${LINEUP_EXPORT_FONT}`;
+    ctx.fillText("G1", 576, pairY + 62);
+    drawLineupSlotCard(ctx, 620, pairY, goalieCardWidth, cardHeight, "Starter", slotName("Starter"), !lineupSelections.Starter);
+    const backupY = pairY + 120;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = `700 20px ${LINEUP_EXPORT_FONT}`;
+    ctx.fillText("G2", 576, backupY + 62);
+    drawLineupSlotCard(ctx, 620, backupY, goalieCardWidth, cardHeight, "Backup", slotName("Backup"), !lineupSelections.Backup);
+
+    const scratchY = pairY + 260;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = `700 20px ${LINEUP_EXPORT_FONT}`;
+    ctx.fillText("SCRATCHES", 96, scratchY - 14);
+    scratches.forEach((slot, index) => {
+      const isOptionalOpen = slot === "Scratch 3" || slot === "Scratch G";
+      drawLineupSlotCard(
+        ctx,
+        96 + index * 401,
+        scratchY,
+        scratchCardWidth,
+        cardHeight,
+        slot,
+        slotName(slot),
+        !lineupSelections[slot] && !isOptionalOpen
+      );
+    });
+
+    ctx.fillStyle = "rgba(203, 213, 225, 0.8)";
+    ctx.font = `500 18px ${LINEUP_EXPORT_FONT}`;
+    const courtesyText = "Courtesy of Golden Edge Analytics";
+    const courtesyWidth = ctx.measureText(courtesyText).width;
+    ctx.fillText(courtesyText, canvas.width - 72 - courtesyWidth, canvas.height - 48);
+
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = "vgk-lineup.png";
+    link.click();
+    setToast({ message: "Lineup image downloaded", visible: true });
   }
 
   return (
@@ -946,12 +1153,23 @@ export function MockTradeSimulator({ teams }: { teams: MockTeam[] }) {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300">
                   VGK Lineup Builder
                 </p>
-                <h3 className="font-[family-name:var(--font-heading)] text-3xl font-semibold text-white">
-                  Post-trade lineup creation
-                </h3>
-                <p className="text-sm leading-7 text-slate-300">
-                  Any forward can be used at any forward spot. Current lineup-eligible pool: {vgkForwards.length} forwards, {vgkDefense.length} defensemen, {vgkGoalies.length} goalies. Submitted trades so far: {appliedTradeCount}.
-                </p>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="space-y-2">
+                    <h3 className="font-[family-name:var(--font-heading)] text-3xl font-semibold text-white">
+                      Post-trade lineup creation
+                    </h3>
+                    <p className="text-sm leading-7 text-slate-300">
+                      Any forward can be used at any forward spot. Current lineup-eligible pool: {vgkForwards.length} forwards, {vgkDefense.length} defensemen, {vgkGoalies.length} goalies. Submitted trades so far: {appliedTradeCount}.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={exportLineupImage}
+                    className="rounded-full border border-white/15 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.08]"
+                  >
+                    Export Lineup Image
+                  </button>
+                </div>
               </div>
               <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4">
                 <div className="grid gap-4 xl:grid-cols-2">
